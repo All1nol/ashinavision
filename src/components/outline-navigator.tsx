@@ -153,9 +153,6 @@ export const OutlineNavigator = ({
             {hasChildren ? "\u25B8" : "\u2022"}
           </span>
           {node.label}
-          <span className="ml-2 text-xs text-foreground/40">
-            [{node.range.start}\u2013{node.range.end}]
-          </span>
         </button>
         {hasChildren && (
           <ul role="group">

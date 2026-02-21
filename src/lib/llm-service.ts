@@ -51,6 +51,71 @@ const clampOutlineRanges = (
   }, []);
 };
 
+/**
+ * LLMs frequently return off-by-one (or worse) character ranges.
+ * For each node we extract the "value" portion of the label and try to
+ * locate it in the LaTeX near the LLM-suggested range, snapping the
+ * range to the real position when a match is found. Parent nodes are
+ * then expanded to encompass their (corrected) children.
+ */
+const snapOutlineRanges = (
+  nodes: OutlineNode[],
+  latex: string
+): OutlineNode[] => {
+  const SEARCH_WINDOW = 30;
+
+  return nodes.map((node) => {
+    const fixedChildren = node.children
+      ? snapOutlineRanges(node.children, latex)
+      : undefined;
+
+    if (fixedChildren && fixedChildren.length > 0) {
+      const childMin = Math.min(...fixedChildren.map((c) => c.range.start));
+      const childMax = Math.max(...fixedChildren.map((c) => c.range.end));
+      return {
+        ...node,
+        range: {
+          start: Math.min(node.range.start, childMin),
+          end: Math.max(node.range.end, childMax),
+        },
+        children: fixedChildren,
+      };
+    }
+
+    const colonIdx = node.label.indexOf(":");
+    const rawValue =
+      colonIdx !== -1 ? node.label.slice(colonIdx + 1).trim() : node.label;
+    const searchText = rawValue.replace(/\s+/g, "");
+
+    if (searchText.length === 0 || searchText.length > 50) {
+      return { ...node, children: fixedChildren };
+    }
+
+    const currentContent = latex.slice(node.range.start, node.range.end);
+    if (currentContent === searchText) {
+      return { ...node, children: fixedChildren };
+    }
+
+    const winStart = Math.max(0, node.range.start - SEARCH_WINDOW);
+    const winEnd = Math.min(latex.length, node.range.end + SEARCH_WINDOW);
+    const window = latex.slice(winStart, winEnd);
+
+    const idx = window.indexOf(searchText);
+    if (idx !== -1) {
+      return {
+        ...node,
+        range: {
+          start: winStart + idx,
+          end: winStart + idx + searchText.length,
+        },
+        children: fixedChildren,
+      };
+    }
+
+    return { ...node, children: fixedChildren };
+  });
+};
+
 export const convertLatex = async (
   latex: string
 ): Promise<ConvertResponse> => {
@@ -98,9 +163,10 @@ export const convertLatex = async (
       );
     }
 
+    const clamped = clampOutlineRanges(result.data.outline, latex.length);
     return {
       ...result.data,
-      outline: clampOutlineRanges(result.data.outline, latex.length),
+      outline: snapOutlineRanges(clamped, latex),
     };
   } catch (err: unknown) {
     if (err instanceof Error && err.name === "AbortError") {
@@ -201,10 +267,11 @@ const extractCompletedResults = (
         const parsed = batchResultSchema.parse(
           JSON.parse(buffer.substring(i, objEnd + 1)),
         );
-        const latexLen = blockLatexMap.get(parsed.id)?.length ?? 0;
+        const latexStr = blockLatexMap.get(parsed.id) ?? "";
+        const batchClamped = clampOutlineRanges(parsed.outline, latexStr.length);
         items.push({
           ...parsed,
-          outline: clampOutlineRanges(parsed.outline, latexLen),
+          outline: snapOutlineRanges(batchClamped, latexStr),
         });
       } catch {
         // skip malformed result

@@ -36,9 +36,7 @@ export const OutputPanel = ({ response, latex, idBase = "output" }: OutputPanelP
   const handleSelectNode = useCallback(
     (node: OutlineNode) => {
       setActiveNodeId(node.id);
-      handleAnnounce(
-        `Selected: ${node.label}, characters ${node.range.start} to ${node.range.end}`
-      );
+      handleAnnounce(`Selected: ${node.label}`);
     },
     [handleAnnounce]
   );
