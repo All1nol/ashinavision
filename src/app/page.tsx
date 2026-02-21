@@ -8,8 +8,12 @@ const HomePage = () => {
           LaTeX to Accessible HTML
         </h1>
         <p className="mt-2 text-sm text-foreground/60 leading-relaxed max-w-2xl">
-          Paste LaTeX math content below and convert it into accessible HTML
-          with plain-English descriptions suitable for screen readers.
+          Paste LaTeX math content or upload a{" "}
+          <code className="rounded bg-foreground/10 px-1 py-0.5 font-mono text-xs">
+            .tex
+          </code>{" "}
+          file to convert it into accessible HTML with plain-English
+          descriptions suitable for screen readers.
         </p>
       </div>
 
