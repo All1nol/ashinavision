@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MathBridge — LaTeX to Accessible HTML",
+  title: "Ashina Vision — LaTeX to Accessible HTML",
   description:
     "Convert LaTeX math content into accessible HTML with plain-English descriptions for screen readers.",
 };
@@ -44,7 +44,7 @@ export default function RootLayout({
               href="/"
               className="text-xl font-bold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/50 rounded-sm"
             >
-              MathBridge
+              Ashina Vision
             </Link>
           </nav>
         </header>
@@ -59,7 +59,7 @@ export default function RootLayout({
           className="border-t border-foreground/10 px-6 py-4 text-sm text-foreground/60"
           aria-label="Site footer"
         >
-          MathBridge &mdash; Accessible math for everyone
+          Ashina Vision &mdash; Accessible math for everyone
         </footer>
       </body>
     </html>
