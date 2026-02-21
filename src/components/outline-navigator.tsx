@@ -36,7 +36,7 @@ export const OutlineNavigator = ({
 
   const flatNodes = flattenNodes(outline);
 
-  const focusNodeAtIndex = useCallback(
+  const focusAndSelectNodeAtIndex = useCallback(
     (index: number) => {
       const treeEl = treeRef.current;
       if (!treeEl) return;
@@ -44,8 +44,13 @@ export const OutlineNavigator = ({
         '[role="treeitem"]'
       );
       buttons[index]?.focus();
+
+      const target = flatNodes[index];
+      if (target) {
+        onSelectNode(target.node);
+      }
     },
-    []
+    [flatNodes, onSelectNode]
   );
 
   const handleKeyDown = useCallback(
@@ -66,20 +71,20 @@ export const OutlineNavigator = ({
         case "ArrowDown": {
           e.preventDefault();
           const next = Math.min(currentIndex + 1, buttons.length - 1);
-          focusNodeAtIndex(next);
+          focusAndSelectNodeAtIndex(next);
           break;
         }
         case "ArrowUp": {
           e.preventDefault();
           const prev = Math.max(currentIndex - 1, 0);
-          focusNodeAtIndex(prev);
+          focusAndSelectNodeAtIndex(prev);
           break;
         }
         case "ArrowRight": {
           e.preventDefault();
           const currentFlat = flatNodes[currentIndex];
           if (currentFlat?.node.children?.length) {
-            focusNodeAtIndex(currentIndex + 1);
+            focusAndSelectNodeAtIndex(currentIndex + 1);
           }
           break;
         }
@@ -89,7 +94,7 @@ export const OutlineNavigator = ({
           if (currentDepth > 0) {
             for (let i = currentIndex - 1; i >= 0; i--) {
               if (flatNodes[i].depth < currentDepth) {
-                focusNodeAtIndex(i);
+                focusAndSelectNodeAtIndex(i);
                 break;
               }
             }
@@ -98,17 +103,17 @@ export const OutlineNavigator = ({
         }
         case "Home": {
           e.preventDefault();
-          focusNodeAtIndex(0);
+          focusAndSelectNodeAtIndex(0);
           break;
         }
         case "End": {
           e.preventDefault();
-          focusNodeAtIndex(buttons.length - 1);
+          focusAndSelectNodeAtIndex(buttons.length - 1);
           break;
         }
       }
     },
-    [flatNodes, focusNodeAtIndex]
+    [flatNodes, focusAndSelectNodeAtIndex]
   );
 
   if (outline.length === 0) return null;
@@ -167,7 +172,7 @@ export const OutlineNavigator = ({
         Equation Outline
       </h3>
       <p className="text-xs text-foreground/50">
-        Use arrow keys to navigate. Enter or Space to select a node.
+        Use arrow keys to navigate and highlight. Enter or Space also selects.
       </p>
       <ul
         ref={treeRef}
