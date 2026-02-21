@@ -5,10 +5,12 @@ import DOMPurify from "isomorphic-dompurify";
 
 type HtmlViewerProps = {
   html: string;
+  idBase?: string;
 };
 
-export const HtmlViewer = ({ html }: HtmlViewerProps) => {
+export const HtmlViewer = ({ html, idBase = "html-viewer" }: HtmlViewerProps) => {
   const [viewAsPlainText, setViewAsPlainText] = useState(false);
+  const toggleId = `${idBase}-plain-text-toggle`;
 
   const sanitized = DOMPurify.sanitize(html, {
     ALLOW_ARIA_ATTR: true,
@@ -18,13 +20,13 @@ export const HtmlViewer = ({ html }: HtmlViewerProps) => {
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
         <label
-          htmlFor="plain-text-toggle"
+          htmlFor={toggleId}
           className="text-sm font-medium text-foreground"
         >
           View as plain text
         </label>
         <button
-          id="plain-text-toggle"
+          id={toggleId}
           type="button"
           role="switch"
           aria-checked={viewAsPlainText}

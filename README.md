@@ -1,5 +1,18 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Accessibility (Blind-first)
+
+This project is **screen-reader-first**. Please read `ACCESSIBILITY.md` before making UI changes.
+
+### Keyboard basics
+
+- **Skip link**: press `Tab` at the top of the page to reach **Skip to main content**.
+- **Route focus**: on navigation, focus moves to the main content region (`#main-content`) and the page title is announced.
+- **Uploaded .tex document reader**:
+  - `Tab` focuses the active expression card
+  - `↑` / `↓` moves between expressions
+  - `Enter` / `Space` expands/collapses expression details
+
 ## Getting Started
 
 First, run the development server:
