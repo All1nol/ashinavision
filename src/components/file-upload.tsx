@@ -85,19 +85,24 @@ export const FileUpload = ({
     }
   };
 
+  const dropzoneId = "file-upload-dropzone";
+  const errorId = "file-upload-error";
+
   return (
     <div className="flex flex-col gap-2">
       <div
+        id={dropzoneId}
         role="button"
         tabIndex={0}
-        aria-label="Upload a .tex file. Click or drag and drop."
+        aria-label="Upload a .tex file. Activate to browse files, or drag and drop a file onto this area."
         aria-disabled={disabled}
+        aria-describedby={error ? errorId : undefined}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`flex min-h-[10rem] cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-8 transition-colors ${
+        className={`flex min-h-[10rem] cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-8 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/50 ${
           disabled
             ? "cursor-not-allowed border-foreground/10 opacity-50"
             : isDragging
@@ -112,6 +117,7 @@ export const FileUpload = ({
           strokeWidth={1.5}
           stroke="currentColor"
           aria-hidden="true"
+          focusable="false"
         >
           <path
             strokeLinecap="round"
@@ -119,7 +125,7 @@ export const FileUpload = ({
             d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12-3-3m0 0-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
           />
         </svg>
-        <div className="text-center">
+        <div className="text-center" aria-hidden="true">
           <p className="text-sm font-medium text-foreground">
             Drop a{" "}
             <code className="rounded bg-foreground/10 px-1.5 py-0.5 font-mono text-xs">
@@ -142,7 +148,11 @@ export const FileUpload = ({
       />
 
       {error && (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+        <p
+          id={errorId}
+          role="alert"
+          className="text-sm text-red-600 dark:text-red-400"
+        >
           {error}
         </p>
       )}

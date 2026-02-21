@@ -155,52 +155,41 @@ export const ConverterClient = () => {
           aria-label="Input method"
           className="mb-4 flex gap-1 rounded-lg border border-foreground/10 bg-foreground/[0.02] p-1 max-w-xs"
         >
-          <button
-            type="button"
-            role="tab"
-            id="tab-paste"
-            aria-selected={inputMode === "paste"}
-            aria-controls="panel-paste"
-            tabIndex={inputMode === "paste" ? 0 : -1}
-            onClick={() => handleModeChange("paste")}
-            onKeyDown={(e) => {
-              if (e.key === "ArrowRight") {
-                e.preventDefault();
-                handleModeChange("upload");
-                document.getElementById("tab-upload")?.focus();
-              }
-            }}
-            className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/50 ${
-              inputMode === "paste"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-foreground/60 hover:text-foreground"
-            }`}
-          >
-            Paste LaTeX
-          </button>
-          <button
-            type="button"
-            role="tab"
-            id="tab-upload"
-            aria-selected={inputMode === "upload"}
-            aria-controls="panel-upload"
-            tabIndex={inputMode === "upload" ? 0 : -1}
-            onClick={() => handleModeChange("upload")}
-            onKeyDown={(e) => {
-              if (e.key === "ArrowLeft") {
-                e.preventDefault();
-                handleModeChange("paste");
-                document.getElementById("tab-paste")?.focus();
-              }
-            }}
-            className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/50 ${
-              inputMode === "upload"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-foreground/60 hover:text-foreground"
-            }`}
-          >
-            Upload .tex File
-          </button>
+          {(["paste", "upload"] as const).map((mode) => {
+            const otherId = mode === "paste" ? "tab-upload" : "tab-paste";
+            const otherMode: InputMode = mode === "paste" ? "upload" : "paste";
+            return (
+              <button
+                key={mode}
+                type="button"
+                role="tab"
+                id={`tab-${mode}`}
+                aria-selected={inputMode === mode}
+                aria-controls={`panel-${mode}`}
+                tabIndex={inputMode === mode ? 0 : -1}
+                onClick={() => handleModeChange(mode)}
+                onKeyDown={(e) => {
+                  if (
+                    e.key === "ArrowRight" ||
+                    e.key === "ArrowLeft" ||
+                    e.key === "Home" ||
+                    e.key === "End"
+                  ) {
+                    e.preventDefault();
+                    handleModeChange(otherMode);
+                    document.getElementById(otherId)?.focus();
+                  }
+                }}
+                className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/50 ${
+                  inputMode === mode
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-foreground/60 hover:text-foreground"
+                }`}
+              >
+                {mode === "paste" ? "Paste LaTeX" : "Upload .tex File"}
+              </button>
+            );
+          })}
         </div>
 
         {inputMode === "paste" && (

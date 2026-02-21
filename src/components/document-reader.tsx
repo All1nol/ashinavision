@@ -187,16 +187,13 @@ export const DocumentReader = ({
   }, [mathBlocks, fileName, announce]);
 
   useEffect(() => {
-    if (
-      !converting &&
-      convertedCount === mathBlocks.length &&
-      !hasAutoFocused.current &&
-      mathBlocks.length > 0
-    ) {
+    if (mathBlocks.length > 0 && !hasAutoFocused.current) {
       hasAutoFocused.current = true;
-      setFocusedMathIndex(0);
+      requestAnimationFrame(() => {
+        setFocusedMathIndex(0);
+      });
     }
-  }, [converting, convertedCount, mathBlocks]);
+  }, [mathBlocks.length]);
 
   useEffect(() => {
     if (focusedMathIndex >= 0 && focusedMathIndex < mathBlocks.length) {
@@ -218,34 +215,61 @@ export const DocumentReader = ({
     [announce, expandedBlock, mathBlocks],
   );
 
+  const navigateToMathIndex = useCallback(
+    (targetIndex: number) => {
+      setFocusedMathIndex(targetIndex);
+      setExpandedBlock(null);
+      const result = results[mathBlocks[targetIndex].id];
+      announce(
+        `Expression ${targetIndex + 1} of ${mathBlocks.length}. ${result?.descriptions.concise ?? "Converting…"}`,
+      );
+    },
+    [mathBlocks, results, announce],
+  );
+
   const handleMathBlockKeyDown = useCallback(
     (e: React.KeyboardEvent, mathIndex: number) => {
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        const next = Math.min(mathIndex + 1, mathBlocks.length - 1);
-        if (next === mathIndex) return;
-        setFocusedMathIndex(next);
-        setExpandedBlock(null);
-        const result = results[mathBlocks[next].id];
-        announce(
-          `Expression ${next + 1} of ${mathBlocks.length}. ${result?.descriptions.concise ?? "Converting…"}`,
-        );
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        const prev = Math.max(mathIndex - 1, 0);
-        if (prev === mathIndex) return;
-        setFocusedMathIndex(prev);
-        setExpandedBlock(null);
-        const result = results[mathBlocks[prev].id];
-        announce(
-          `Expression ${prev + 1} of ${mathBlocks.length}. ${result?.descriptions.concise ?? "Converting…"}`,
-        );
-      } else if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        handleToggleExpanded(mathIndex);
+      switch (e.key) {
+        case "ArrowDown": {
+          e.preventDefault();
+          const next = Math.min(mathIndex + 1, mathBlocks.length - 1);
+          if (next !== mathIndex) navigateToMathIndex(next);
+          break;
+        }
+        case "ArrowUp": {
+          e.preventDefault();
+          const prev = Math.max(mathIndex - 1, 0);
+          if (prev !== mathIndex) navigateToMathIndex(prev);
+          break;
+        }
+        case "Home": {
+          e.preventDefault();
+          if (mathIndex !== 0) navigateToMathIndex(0);
+          break;
+        }
+        case "End": {
+          e.preventDefault();
+          const last = mathBlocks.length - 1;
+          if (mathIndex !== last) navigateToMathIndex(last);
+          break;
+        }
+        case "Escape": {
+          e.preventDefault();
+          if (expandedBlock) {
+            setExpandedBlock(null);
+            announce("Details collapsed");
+          }
+          break;
+        }
+        case "Enter":
+        case " ": {
+          e.preventDefault();
+          handleToggleExpanded(mathIndex);
+          break;
+        }
       }
     },
-    [mathBlocks, results, announce, handleToggleExpanded],
+    [mathBlocks, navigateToMathIndex, expandedBlock, announce, handleToggleExpanded],
   );
 
   const progress =
@@ -292,7 +316,7 @@ export const DocumentReader = ({
         </div>
       )}
 
-      <p className="text-xs text-foreground/40">
+      <p className="text-xs text-foreground/40" id="math-list-instructions">
         Focus a math block, then use{" "}
         <kbd className="rounded border border-foreground/20 px-1.5 py-0.5 font-mono text-[0.65rem]">
           ↑
@@ -304,14 +328,26 @@ export const DocumentReader = ({
         <kbd className="rounded border border-foreground/20 px-1.5 py-0.5 font-mono text-[0.65rem]">
           Enter
         </kbd>{" "}
-        to expand details.
+        to expand details.{" "}
+        <kbd className="rounded border border-foreground/20 px-1.5 py-0.5 font-mono text-[0.65rem]">
+          Home
+        </kbd>{" "}
+        <kbd className="rounded border border-foreground/20 px-1.5 py-0.5 font-mono text-[0.65rem]">
+          End
+        </kbd>{" "}
+        jump to first/last.{" "}
+        <kbd className="rounded border border-foreground/20 px-1.5 py-0.5 font-mono text-[0.65rem]">
+          Esc
+        </kbd>{" "}
+        collapses.
       </p>
 
       <div
         className="flex flex-col gap-2"
         role="region"
-        aria-label="Document content"
-        aria-busy={converting ? true : undefined}
+        aria-label={`${mathBlocks.length} math expressions from ${fileName}`}
+        aria-describedby="math-list-instructions"
+        aria-busy={converting}
       >
         {segments.map((segment, segIdx) => {
           if (segment.type === "text") {

@@ -39,14 +39,26 @@ export default function RootLayout({
         </a>
         <RouteFocusManager />
         <header className="border-b border-foreground/10 px-6 py-4">
-          <Link href="/" className="text-xl font-bold tracking-tight">
-            MathBridge
-          </Link>
+          <nav aria-label="Main navigation">
+            <Link
+              href="/"
+              className="text-xl font-bold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/50 rounded-sm"
+            >
+              MathBridge
+            </Link>
+          </nav>
         </header>
-        <main id="main-content" tabIndex={-1} className="flex-1 px-6 py-8">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 px-6 py-8 focus-visible:outline-none"
+        >
           {children}
         </main>
-        <footer className="border-t border-foreground/10 px-6 py-4 text-sm text-foreground/60">
+        <footer
+          className="border-t border-foreground/10 px-6 py-4 text-sm text-foreground/60"
+          aria-label="Site footer"
+        >
           MathBridge &mdash; Accessible math for everyone
         </footer>
       </body>

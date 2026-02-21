@@ -84,17 +84,30 @@ export const OutputPanel = ({ response, latex, idBase = "output" }: OutputPanelP
             onClick={() => setActiveTab(tab.id)}
             onKeyDown={(e) => {
               const currentIndex = TABS.findIndex((t) => t.id === activeTab);
-              if (e.key === "ArrowRight") {
+              let target: (typeof TABS)[number] | undefined;
+
+              switch (e.key) {
+                case "ArrowRight":
+                  target = TABS[(currentIndex + 1) % TABS.length];
+                  break;
+                case "ArrowLeft":
+                  target =
+                    TABS[(currentIndex - 1 + TABS.length) % TABS.length];
+                  break;
+                case "Home":
+                  target = TABS[0];
+                  break;
+                case "End":
+                  target = TABS[TABS.length - 1];
+                  break;
+              }
+
+              if (target) {
                 e.preventDefault();
-                const next = TABS[(currentIndex + 1) % TABS.length];
-                setActiveTab(next.id);
-                document.getElementById(`${idBase}-tab-${next.id}`)?.focus();
-              } else if (e.key === "ArrowLeft") {
-                e.preventDefault();
-                const prev =
-                  TABS[(currentIndex - 1 + TABS.length) % TABS.length];
-                setActiveTab(prev.id);
-                document.getElementById(`${idBase}-tab-${prev.id}`)?.focus();
+                setActiveTab(target.id);
+                document
+                  .getElementById(`${idBase}-tab-${target.id}`)
+                  ?.focus();
               }
             }}
             className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/50 ${

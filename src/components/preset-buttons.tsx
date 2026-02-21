@@ -50,8 +50,8 @@ export const PresetButtons = ({
             href="https://www.researchgate.net/publication/371311655"
             target="_blank"
             rel="noopener noreferrer"
-            className="underline hover:text-foreground/70 transition-colors"
-            tabIndex={0}
+            className="underline hover:text-foreground/70 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/50 rounded-sm"
+            aria-label="Kortemeyer 2023 research paper (opens in new tab)"
           >
             Kortemeyer (2023)
           </a>
