@@ -20,9 +20,10 @@ const TABS: { id: Tab; label: string }[] = [
 type OutputPanelProps = {
   response: ConvertResponse;
   latex: string;
+  idBase?: string;
 };
 
-export const OutputPanel = ({ response, latex }: OutputPanelProps) => {
+export const OutputPanel = ({ response, latex, idBase = "output" }: OutputPanelProps) => {
   const [activeTab, setActiveTab] = useState<Tab>("concise");
   const [announcement, setAnnouncement] = useState("");
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
@@ -76,9 +77,9 @@ export const OutputPanel = ({ response, latex }: OutputPanelProps) => {
             key={tab.id}
             type="button"
             role="tab"
-            id={`tab-${tab.id}`}
+            id={`${idBase}-tab-${tab.id}`}
             aria-selected={activeTab === tab.id}
-            aria-controls={`panel-${tab.id}`}
+            aria-controls={`${idBase}-panel-${tab.id}`}
             tabIndex={activeTab === tab.id ? 0 : -1}
             onClick={() => setActiveTab(tab.id)}
             onKeyDown={(e) => {
@@ -87,13 +88,13 @@ export const OutputPanel = ({ response, latex }: OutputPanelProps) => {
                 e.preventDefault();
                 const next = TABS[(currentIndex + 1) % TABS.length];
                 setActiveTab(next.id);
-                document.getElementById(`tab-${next.id}`)?.focus();
+                document.getElementById(`${idBase}-tab-${next.id}`)?.focus();
               } else if (e.key === "ArrowLeft") {
                 e.preventDefault();
                 const prev =
                   TABS[(currentIndex - 1 + TABS.length) % TABS.length];
                 setActiveTab(prev.id);
-                document.getElementById(`tab-${prev.id}`)?.focus();
+                document.getElementById(`${idBase}-tab-${prev.id}`)?.focus();
               }
             }}
             className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/50 ${
@@ -108,9 +109,9 @@ export const OutputPanel = ({ response, latex }: OutputPanelProps) => {
       </div>
 
       <div
-        id={`panel-${activeTab}`}
+        id={`${idBase}-panel-${activeTab}`}
         role="tabpanel"
-        aria-labelledby={`tab-${activeTab}`}
+        aria-labelledby={`${idBase}-tab-${activeTab}`}
         tabIndex={0}
         className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/50 rounded-lg"
       >
@@ -146,7 +147,7 @@ export const OutputPanel = ({ response, latex }: OutputPanelProps) => {
 
         {activeTab === "html" && (
           <div className="flex flex-col gap-3">
-            <HtmlViewer html={response.html} />
+            <HtmlViewer html={response.html} idBase={`${idBase}-html`} />
             <CopyButton
               text={response.html}
               label="HTML"

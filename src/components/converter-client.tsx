@@ -2,15 +2,15 @@
 
 import { useState, useRef, useCallback } from "react";
 import type { ConvertResponse } from "@/lib/types";
-import type { MathBlock } from "@/lib/tex-parser";
-import { extractMathBlocks } from "@/lib/tex-parser";
+import type { MathBlock, DocumentSegment } from "@/lib/tex-parser";
+import { extractDocumentSegments } from "@/lib/tex-parser";
 import { LatexInput } from "./latex-input";
 import { PresetButtons } from "./preset-buttons";
 import { ConvertButton } from "./convert-button";
 import { OutputPanel } from "./output-panel";
 import { StatusAnnouncer } from "./status-announcer";
 import { FileUpload } from "./file-upload";
-import { TexMathBlocks } from "./tex-math-blocks";
+import { DocumentReader } from "./document-reader";
 
 const MAX_LENGTH = 20_000;
 
@@ -25,6 +25,9 @@ export const ConverterClient = () => {
   const [loading, setLoading] = useState(false);
   const [announcement, setAnnouncement] = useState("");
 
+  const [uploadedSegments, setUploadedSegments] = useState<DocumentSegment[]>(
+    [],
+  );
   const [uploadedBlocks, setUploadedBlocks] = useState<MathBlock[]>([]);
   const [uploadedFileName, setUploadedFileName] = useState("");
   const [uploadEmpty, setUploadEmpty] = useState(false);
@@ -96,18 +99,19 @@ export const ConverterClient = () => {
 
   const handleFileLoaded = useCallback(
     (content: string, fileName: string) => {
-      const blocks = extractMathBlocks(content);
-      setUploadedBlocks(blocks);
+      const { segments, mathBlocks } = extractDocumentSegments(content);
+      setUploadedSegments(segments);
+      setUploadedBlocks(mathBlocks);
       setUploadedFileName(fileName);
-      setUploadEmpty(blocks.length === 0);
+      setUploadEmpty(mathBlocks.length === 0);
 
-      if (blocks.length === 0) {
+      if (mathBlocks.length === 0) {
         announce(
           `File ${fileName} loaded, but no math expressions were found.`,
         );
       } else {
         announce(
-          `File ${fileName} loaded. Found ${blocks.length} math expression${blocks.length !== 1 ? "s" : ""}.`,
+          `File ${fileName} loaded. Found ${mathBlocks.length} math expression${mathBlocks.length !== 1 ? "s" : ""}. Converting automatically…`,
         );
       }
     },
@@ -115,6 +119,7 @@ export const ConverterClient = () => {
   );
 
   const handleClearUpload = useCallback(() => {
+    setUploadedSegments([]);
     setUploadedBlocks([]);
     setUploadedFileName("");
     setUploadEmpty(false);
@@ -247,12 +252,27 @@ export const ConverterClient = () => {
                   <span className="font-semibold text-foreground">
                     {uploadedFileName}
                   </span>
-                  . The parser looks for <code className="rounded bg-foreground/10 px-1 py-0.5 font-mono text-xs">$...$</code>,{" "}
-                  <code className="rounded bg-foreground/10 px-1 py-0.5 font-mono text-xs">$$...$$</code>,{" "}
-                  <code className="rounded bg-foreground/10 px-1 py-0.5 font-mono text-xs">\[...\]</code>,{" "}
-                  and named math environments like{" "}
-                  <code className="rounded bg-foreground/10 px-1 py-0.5 font-mono text-xs">equation</code>,{" "}
-                  <code className="rounded bg-foreground/10 px-1 py-0.5 font-mono text-xs">align</code>, etc.
+                  . The parser looks for{" "}
+                  <code className="rounded bg-foreground/10 px-1 py-0.5 font-mono text-xs">
+                    $...$
+                  </code>
+                  ,{" "}
+                  <code className="rounded bg-foreground/10 px-1 py-0.5 font-mono text-xs">
+                    $$...$$
+                  </code>
+                  ,{" "}
+                  <code className="rounded bg-foreground/10 px-1 py-0.5 font-mono text-xs">
+                    \[...\]
+                  </code>
+                  , and named math environments like{" "}
+                  <code className="rounded bg-foreground/10 px-1 py-0.5 font-mono text-xs">
+                    equation
+                  </code>
+                  ,{" "}
+                  <code className="rounded bg-foreground/10 px-1 py-0.5 font-mono text-xs">
+                    align
+                  </code>
+                  , etc.
                 </p>
                 <button
                   type="button"
@@ -263,8 +283,9 @@ export const ConverterClient = () => {
                 </button>
               </div>
             ) : (
-              <TexMathBlocks
-                blocks={uploadedBlocks}
+              <DocumentReader
+                segments={uploadedSegments}
+                mathBlocks={uploadedBlocks}
                 fileName={uploadedFileName}
                 onClear={handleClearUpload}
               />
@@ -286,7 +307,7 @@ export const ConverterClient = () => {
 
       {inputMode === "paste" && response && (
         <section aria-labelledby="output-heading">
-          <OutputPanel response={response} latex={latex} />
+          <OutputPanel response={response} latex={latex} idBase="single-output" />
         </section>
       )}
     </div>
