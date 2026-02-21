@@ -16,6 +16,18 @@ export interface ConvertResponse {
   warnings: string[];
 }
 
+export interface BatchConvertRequest {
+  blocks: { id: string; latex: string }[];
+}
+
+export interface BatchResultItem {
+  id: string;
+  html: string;
+  descriptions: { concise: string; detailed: string };
+  outline: OutlineNode[];
+  warnings: string[];
+}
+
 export interface ApiError {
   error: { code: string; message: string };
 }

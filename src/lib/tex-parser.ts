@@ -6,8 +6,13 @@ export type MathBlock = {
   environmentName?: string;
   latex: string;
   lineNumber: number;
-  contextBefore: string;
+  sourceStart: number;
+  sourceEnd: number;
 };
+
+export type DocumentSegment =
+  | { type: "text"; content: string }
+  | { type: "math"; block: MathBlock };
 
 const MATH_ENVIRONMENTS = [
   "equation",
@@ -29,13 +34,6 @@ const MATH_ENVIRONMENTS = [
 
 const getLineNumber = (source: string, index: number): number =>
   source.substring(0, index).split("\n").length;
-
-const getContextBefore = (source: string, index: number): string => {
-  const before = source.substring(Math.max(0, index - 80), index);
-  const lastNewline = before.lastIndexOf("\n");
-  const line = lastNewline >= 0 ? before.substring(lastNewline + 1) : before;
-  return line.trim();
-};
 
 export const extractMathBlocks = (texContent: string): MathBlock[] => {
   const blocks: MathBlock[] = [];
@@ -61,7 +59,8 @@ export const extractMathBlocks = (texContent: string): MathBlock[] => {
       environmentName,
       latex,
       lineNumber: getLineNumber(texContent, matchIndex),
-      contextBefore: getContextBefore(texContent, matchIndex),
+      sourceStart: matchIndex,
+      sourceEnd: matchIndex + matchLength,
     });
   };
 
@@ -106,10 +105,96 @@ export const extractMathBlocks = (texContent: string): MathBlock[] => {
     addBlock(match.index, match[0].length, inner, "inline");
   }
 
-  blocks.sort((a, b) => a.lineNumber - b.lineNumber);
+  blocks.sort((a, b) => a.sourceStart - b.sourceStart);
   blocks.forEach((block, i) => {
     block.id = `math-${i}`;
   });
 
   return blocks;
+};
+
+const cleanLatexText = (text: string): string =>
+  text
+    .replace(/%.*/g, "")
+    .replace(/\\(?:sub)*section\*?\{([^}]*)\}/g, "\n$1\n")
+    .replace(
+      /\\(?:textbf|textit|emph|text|textrm|textsf|texttt)\{([^}]*)\}/g,
+      "$1",
+    )
+    .replace(/\\(?:bf|it|em|rm|sf|tt)\b/g, "")
+    .replace(/\\label\{[^}]*\}/g, "")
+    .replace(/\\(?:eq)?ref\{[^}]*\}/g, "[ref]")
+    .replace(/\\cite(?:\[[^\]]*\])?\{[^}]*\}/g, "[citation]")
+    .replace(/\\item(?:\[[^\]]*\])?/g, "•")
+    .replace(
+      /\\(?:begin|end)\{(?:itemize|enumerate|description|figure|table|tabular|center|abstract|document|thebibliography)\}(?:\{[^}]*\})?/g,
+      "",
+    )
+    .replace(
+      /\\(?:par|noindent|bigskip|medskip|smallskip|newline|newpage|clearpage|maketitle|vspace|hspace)\*?(?:\{[^}]*\})?/g,
+      "",
+    )
+    .replace(/\\(?:title|author|date)\{([^}]*)\}/g, "$1")
+    .replace(
+      /\\(?:large|Large|LARGE|huge|Huge|small|footnotesize|scriptsize|tiny|normalsize)\b/g,
+      "",
+    )
+    .replace(/\\(?:centering|raggedright|raggedleft)\b/g, "")
+    .replace(/[{}]/g, "")
+    .replace(/\\\\/g, " ")
+    .replace(/~/g, " ")
+    .replace(/\\[,;:!]/g, " ")
+    .replace(/\\&/g, "&")
+    .replace(/``|''/g, '"')
+    .replace(/`|'/g, "'")
+    .replace(/---/g, "\u2014")
+    .replace(/--/g, "\u2013")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+export const extractDocumentSegments = (
+  texContent: string,
+): { segments: DocumentSegment[]; mathBlocks: MathBlock[] } => {
+  const bodyMatch = texContent.match(
+    /\\begin\{document\}([\s\S]*?)\\end\{document\}/,
+  );
+
+  let body: string;
+  let lineOffset: number;
+
+  if (bodyMatch) {
+    const bodyStartIdx = bodyMatch.index! + "\\begin{document}".length;
+    body = texContent.substring(
+      bodyStartIdx,
+      bodyMatch.index! + bodyMatch[0].length - "\\end{document}".length,
+    );
+    lineOffset = texContent.substring(0, bodyStartIdx).split("\n").length - 1;
+  } else {
+    body = texContent;
+    lineOffset = 0;
+  }
+
+  const blocks = extractMathBlocks(body);
+  blocks.forEach((b) => {
+    b.lineNumber += lineOffset;
+  });
+
+  const segments: DocumentSegment[] = [];
+  let cursor = 0;
+
+  for (const block of blocks) {
+    if (block.sourceStart > cursor) {
+      const cleaned = cleanLatexText(body.substring(cursor, block.sourceStart));
+      if (cleaned) segments.push({ type: "text", content: cleaned });
+    }
+    segments.push({ type: "math", block });
+    cursor = block.sourceEnd;
+  }
+
+  if (cursor < body.length) {
+    const cleaned = cleanLatexText(body.substring(cursor));
+    if (cleaned) segments.push({ type: "text", content: cleaned });
+  }
+
+  return { segments, mathBlocks: blocks };
 };

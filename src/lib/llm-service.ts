@@ -1,7 +1,12 @@
 import OpenAI from "openai";
 import { z } from "zod";
-import type { ConvertResponse, OutlineNode } from "./types";
-import { SYSTEM_PROMPT, buildUserPrompt } from "./prompt";
+import type { ConvertResponse, OutlineNode, BatchResultItem } from "./types";
+import {
+  SYSTEM_PROMPT,
+  buildUserPrompt,
+  BATCH_SYSTEM_PROMPT,
+  buildBatchUserPrompt,
+} from "./prompt";
 
 const outlineNodeSchema: z.ZodType<OutlineNode> = z.lazy(() =>
   z.object({
@@ -104,5 +109,168 @@ export const convertLatex = async (
     throw err;
   } finally {
     clearTimeout(timeout);
+  }
+};
+
+const batchResultSchema = z.object({
+  id: z.string(),
+  html: z.string(),
+  descriptions: z.object({
+    concise: z.string(),
+    detailed: z.string(),
+  }),
+  outline: z.array(outlineNodeSchema).default([]),
+  warnings: z.array(z.string()).default([]),
+});
+
+/**
+ * Finds the end index of a top-level JSON object starting at `start`.
+ * Correctly handles nested braces and string escaping.
+ * Returns -1 if the object is incomplete.
+ */
+const findObjectEnd = (str: string, start: number): number => {
+  if (str[start] !== "{") return -1;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < str.length; i++) {
+    const ch = str[i];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === "\\") {
+        escaped = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+    } else if (ch === "{") {
+      depth++;
+    } else if (ch === "}") {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+};
+
+/**
+ * Extracts completed result objects from the streaming JSON buffer.
+ * Looks for top-level objects inside the `"results": [...]` array.
+ */
+const extractCompletedResults = (
+  buffer: string,
+  alreadyExtracted: number,
+  blockLatexMap: Map<string, string>,
+): BatchResultItem[] => {
+  const resultsKeyIdx = buffer.indexOf('"results"');
+  if (resultsKeyIdx === -1) return [];
+
+  const arrayStart = buffer.indexOf("[", resultsKeyIdx);
+  if (arrayStart === -1) return [];
+
+  const items: BatchResultItem[] = [];
+  let i = arrayStart + 1;
+  let found = 0;
+
+  while (i < buffer.length) {
+    while (
+      i < buffer.length &&
+      (buffer[i] === " " ||
+        buffer[i] === "\n" ||
+        buffer[i] === "\r" ||
+        buffer[i] === "\t" ||
+        buffer[i] === ",")
+    ) {
+      i++;
+    }
+
+    if (i >= buffer.length || buffer[i] === "]") break;
+    if (buffer[i] !== "{") break;
+
+    const objEnd = findObjectEnd(buffer, i);
+    if (objEnd === -1) break;
+
+    found++;
+    if (found > alreadyExtracted) {
+      try {
+        const parsed = batchResultSchema.parse(
+          JSON.parse(buffer.substring(i, objEnd + 1)),
+        );
+        const latexLen = blockLatexMap.get(parsed.id)?.length ?? 0;
+        items.push({
+          ...parsed,
+          outline: clampOutlineRanges(parsed.outline, latexLen),
+        });
+      } catch {
+        // skip malformed result
+      }
+    }
+
+    i = objEnd + 1;
+  }
+
+  return items;
+};
+
+export type BatchStreamCallback = (item: BatchResultItem) => void;
+
+export const convertLatexBatchStreaming = async (
+  blocks: { id: string; latex: string }[],
+  onResult: BatchStreamCallback,
+): Promise<void> => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY environment variable is not set");
+  }
+
+  const model = process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
+  const client = new OpenAI({ apiKey });
+
+  const blockLatexMap = new Map(blocks.map((b) => [b.id, b.latex]));
+
+  const stream = await client.chat.completions.create({
+    model,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: BATCH_SYSTEM_PROMPT },
+      { role: "user", content: buildBatchUserPrompt(blocks) },
+    ],
+    temperature: 0.2,
+    stream: true,
+  });
+
+  let fullBuffer = "";
+  let extractedCount = 0;
+
+  for await (const chunk of stream) {
+    const content = chunk.choices[0]?.delta?.content ?? "";
+    if (!content) continue;
+    fullBuffer += content;
+
+    const newResults = extractCompletedResults(
+      fullBuffer,
+      extractedCount,
+      blockLatexMap,
+    );
+
+    for (const result of newResults) {
+      onResult(result);
+      extractedCount++;
+    }
+  }
+
+  // Final extraction for any trailing results
+  const remaining = extractCompletedResults(
+    fullBuffer,
+    extractedCount,
+    blockLatexMap,
+  );
+  for (const result of remaining) {
+    onResult(result);
   }
 };
