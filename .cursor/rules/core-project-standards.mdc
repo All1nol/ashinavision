@@ -1,0 +1,23 @@
+---
+description: Core standards for MathBridge agentic development
+alwaysApply: true
+---
+
+# MathBridge Core Standards
+
+- Build for accessibility-first UX and semantics by default.
+- Prefer TypeScript with explicit types at API boundaries.
+- Keep server secrets on the server only; never expose API keys in client code.
+- Use `process.env` for credentials and provide `.env.example` placeholders only.
+- Keep changes small, testable, and aligned to the active PRD tasks.
+
+## Security Rules
+
+- Never hardcode secrets or tokens in source, docs, or examples.
+- Validate and sanitize all untrusted input before processing.
+- Return user-safe errors from APIs; do not leak stack traces or provider internals.
+
+## Delivery Rules
+
+- Add concise docs updates when behavior or setup changes.
+- Favor simple architecture first, then add complexity only when required.
